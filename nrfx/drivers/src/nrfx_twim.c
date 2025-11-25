@@ -33,12 +33,35 @@
 
 #include <nrfx.h>
 
+#define NRF_TWIM_MEASURE_REG_ACCESS 1
+
+volatile uint32_t g_reg_writes;
+volatile uint32_t g_reg_reads;
+
+#include <haly/nrfy_twim.h>
+
 #include <nrfx_twim.h>
 #include <haly/nrfy_gpio.h>
 #include "prs/nrfx_prs.h"
 
 #define NRFX_LOG_MODULE TWIM
 #include <nrfx_log.h>
+
+#include <hal/nrf_gpio.h>
+
+#define TWIM_PROFILE_TIMINGS 1
+
+#if NRFX_CHECK(TWIM_PROFILE_TIMINGS)
+#define TWIM_PROFILING_PORT NRF_P1
+#define TWIM_PROFILING_PIN  14
+#endif
+#if NRFX_CHECK(TWIM_PROFILE_TIMINGS)
+#define TWIM_PROFILE_PIN_HIGH() nrf_gpio_port_pin_write(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN, 1); (void)nrf_gpio_port_pin_read(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN)
+#define TWIM_PROFILE_PIN_LOW() nrf_gpio_port_pin_write(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN, 0); (void)nrf_gpio_port_pin_read(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN)
+#else
+#define TWIM_PROFILE_PIN_HIGH()
+#define TWIM_PROFILE_PIN_LOW()
+#endif
 
 #define EVT_TO_STR(event)                                       \
     (event == NRFX_TWIM_EVT_DONE         ? "EVT_DONE"         : \
@@ -707,6 +730,8 @@ uint32_t nrfx_twim_stopped_event_address_get(nrfx_twim_t const * p_instance)
 
 void nrfx_twim_irq_handler(nrfx_twim_t * p_instance)
 {
+    TWIM_PROFILE_PIN_LOW();
+
     NRFX_ASSERT(p_instance);
 
     NRF_TWIM_Type * p_twim = p_instance->p_twim;
@@ -744,6 +769,8 @@ void nrfx_twim_irq_handler(nrfx_twim_t * p_instance)
             nrfy_twim_rx_list_set(p_twim, NRFX_TWIM_FLAG_RX_POSTINC & p_cb->flags);
             // Start proper transmission.
             nrfy_twim_task_trigger(p_twim, NRF_TWIM_TASK_STARTTX);
+
+            TWIM_PROFILE_PIN_HIGH();
             return;
         }
     }
@@ -775,6 +802,8 @@ void nrfx_twim_irq_handler(nrfx_twim_t * p_instance)
             }
 
             p_cb->error = true;
+
+            TWIM_PROFILE_PIN_HIGH();
             return;
         }
     }
@@ -865,6 +894,8 @@ void nrfx_twim_irq_handler(nrfx_twim_t * p_instance)
             nrfy_twim_int_enable(p_twim, p_cb->int_mask);
             nrfy_twim_task_trigger(p_twim, NRF_TWIM_TASK_STARTTX);
             nrfy_twim_task_trigger(p_twim, NRF_TWIM_TASK_RESUME);
+
+            TWIM_PROFILE_PIN_HIGH();
             return;
         }
     }
@@ -905,4 +936,6 @@ void nrfx_twim_irq_handler(nrfx_twim_t * p_instance)
     {
         p_cb->handler(&event, p_cb->p_context);
     }
+
+    TWIM_PROFILE_PIN_HIGH();
 }

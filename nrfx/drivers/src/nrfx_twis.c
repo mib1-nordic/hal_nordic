@@ -39,6 +39,23 @@
 #define NRFX_LOG_MODULE TWIS
 #include <nrfx_log.h>
 
+
+#include <hal/nrf_gpio.h>
+
+#define TWIM_PROFILE_TIMINGS 1
+
+#if NRFX_CHECK(TWIM_PROFILE_TIMINGS)
+#define TWIM_PROFILING_PORT NRF_P1
+#define TWIM_PROFILING_PIN  14
+#endif
+#if NRFX_CHECK(TWIM_PROFILE_TIMINGS)
+#define TWIM_PROFILE_PIN_HIGH() nrf_gpio_port_pin_write(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN, 1); (void)nrf_gpio_port_pin_read(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN)
+#define TWIM_PROFILE_PIN_LOW() nrf_gpio_port_pin_write(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN, 0); (void)nrf_gpio_port_pin_read(TWIM_PROFILING_PORT, TWIM_PROFILING_PIN)
+#else
+#define TWIM_PROFILE_PIN_HIGH()
+#define TWIM_PROFILE_PIN_LOW()
+#endif
+
 #define EVT_TO_STR(event)                                             \
     (event == NRF_TWIS_EVENT_STOPPED   ? "NRF_TWIS_EVENT_STOPPED"   : \
     (event == NRF_TWIS_EVENT_ERROR     ? "NRF_TWIS_EVENT_ERROR"     : \
@@ -207,6 +224,7 @@ static inline void nrfx_twis_process_error(nrfx_twis_control_block_t * p_cb,
 
 void nrfx_twis_irq_handler(nrfx_twis_t * p_instance)
 {
+    TWIM_PROFILE_PIN_LOW();
     NRFX_ASSERT(p_instance);
 
     NRF_TWIS_Type * p_reg = p_instance->p_reg;
@@ -217,6 +235,7 @@ void nrfx_twis_irq_handler(nrfx_twis_t * p_instance)
         /* Exclude parallel processing of this function */
         if (p_cb->semaphore)
         {
+            TWIM_PROFILE_PIN_HIGH();
             return;
         }
         p_cb->semaphore = 1;
@@ -392,6 +411,7 @@ void nrfx_twis_irq_handler(nrfx_twis_t * p_instance)
     {
         p_cb->semaphore = 0;
     }
+    TWIM_PROFILE_PIN_HIGH();
 }
 
 static inline void nrfx_twis_preprocess_status(nrfx_twis_t * p_instance)

@@ -48,6 +48,14 @@ extern "C" {
 #define NRF_TWIM_CLOCKPIN_SCL_NEEDED 1
 #endif
 
+#if NRFX_CHECK(NRF_TWIM_MEASURE_REG_ACCESS)
+#define NRF_TWIM_REG_WRITE_CAPTURE() g_reg_writes++
+#define NRF_TWIM_REG_READ_CAPTURE()  g_reg_reads++
+#else
+#define NRF_TWIM_REG_WRITE_CAPTURE()
+#define NRF_TWIM_REG_READ_CAPTURE()
+#endif
+
 /**
  * @defgroup nrf_twim_hal TWIM HAL
  * @{
@@ -807,6 +815,7 @@ NRF_STATIC_INLINE bool nrf_twim_tx_terminate_on_bus_error_check(NRF_TWIM_Type co
 NRF_STATIC_INLINE void nrf_twim_task_trigger(NRF_TWIM_Type * p_reg,
                                              nrf_twim_task_t task)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *)((uint8_t *)p_reg + (uint32_t)task)) = 0x1UL;
 }
 
@@ -819,13 +828,17 @@ NRF_STATIC_INLINE uint32_t nrf_twim_task_address_get(NRF_TWIM_Type const * p_reg
 NRF_STATIC_INLINE void nrf_twim_event_clear(NRF_TWIM_Type * p_reg,
                                             nrf_twim_event_t event)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *)((uint8_t *)p_reg + (uint32_t)event)) = 0x0UL;
+
+    NRF_TWIM_REG_READ_CAPTURE();
     nrf_event_readback((uint8_t *)p_reg + (uint32_t)event);
 }
 
 NRF_STATIC_INLINE bool nrf_twim_event_check(NRF_TWIM_Type const * p_reg,
                                             nrf_twim_event_t      event)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return nrf_event_check(p_reg, event);
 }
 
@@ -838,29 +851,36 @@ NRF_STATIC_INLINE uint32_t nrf_twim_event_address_get(NRF_TWIM_Type const * p_re
 NRF_STATIC_INLINE void nrf_twim_shorts_enable(NRF_TWIM_Type * p_reg,
                                               uint32_t mask)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->SHORTS |= mask;
 }
 
 NRF_STATIC_INLINE void nrf_twim_shorts_disable(NRF_TWIM_Type * p_reg,
                                                uint32_t mask)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->SHORTS &= ~(mask);
 }
 
 NRF_STATIC_INLINE void nrf_twim_int_enable(NRF_TWIM_Type * p_reg,
                                            uint32_t mask)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->INTENSET = mask;
 }
 
 NRF_STATIC_INLINE void nrf_twim_int_disable(NRF_TWIM_Type * p_reg,
                                             uint32_t mask)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->INTENCLR = mask;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_int_enable_check(NRF_TWIM_Type const * p_reg, uint32_t mask)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->INTENSET & mask;
 }
 
@@ -869,6 +889,7 @@ NRF_STATIC_INLINE void nrf_twim_subscribe_set(NRF_TWIM_Type * p_reg,
                                               nrf_twim_task_t task,
                                               uint8_t        channel)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) task + 0x80uL)) =
             ((uint32_t)channel | NRF_SUBSCRIBE_PUBLISH_ENABLE);
 }
@@ -876,12 +897,14 @@ NRF_STATIC_INLINE void nrf_twim_subscribe_set(NRF_TWIM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_twim_subscribe_clear(NRF_TWIM_Type * p_reg,
                                                 nrf_twim_task_t task)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) task + 0x80uL)) = 0;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_subscribe_get(NRF_TWIM_Type const * p_reg,
                                                   nrf_twim_task_t       task)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return *((volatile uint32_t const *) ((uint8_t const *) p_reg + (uint32_t) task + 0x80uL));
 }
 
@@ -889,6 +912,7 @@ NRF_STATIC_INLINE void nrf_twim_publish_set(NRF_TWIM_Type *  p_reg,
                                             nrf_twim_event_t event,
                                             uint8_t         channel)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) event + 0x80uL)) =
             ((uint32_t)channel | NRF_SUBSCRIBE_PUBLISH_ENABLE);
 }
@@ -896,23 +920,27 @@ NRF_STATIC_INLINE void nrf_twim_publish_set(NRF_TWIM_Type *  p_reg,
 NRF_STATIC_INLINE void nrf_twim_publish_clear(NRF_TWIM_Type *  p_reg,
                                               nrf_twim_event_t event)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) event + 0x80uL)) = 0;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_publish_get(NRF_TWIM_Type const * p_reg,
                                                 nrf_twim_event_t      event)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return *((volatile uint32_t const *) ((uint8_t const *) p_reg + (uint32_t) event + 0x80uL));
 }
 #endif // defined(DPPI_PRESENT)
 
 NRF_STATIC_INLINE void nrf_twim_enable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->ENABLE = (TWIM_ENABLE_ENABLE_Enabled << TWIM_ENABLE_ENABLE_Pos);
 }
 
 NRF_STATIC_INLINE void nrf_twim_disable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->ENABLE = (TWIM_ENABLE_ENABLE_Disabled << TWIM_ENABLE_ENABLE_Pos);
 }
 
@@ -920,38 +948,48 @@ NRF_STATIC_INLINE void nrf_twim_pins_set(NRF_TWIM_Type * p_reg,
                                          uint32_t scl_pin,
                                          uint32_t sda_pin)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SCL = scl_pin;
     p_reg->PSEL.SDA = sda_pin;
 }
 
 NRF_STATIC_INLINE void nrf_twim_scl_pin_set(NRF_TWIM_Type * p_reg, uint32_t pin)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SCL = pin;
 }
 
 NRF_STATIC_INLINE void nrf_twim_sda_pin_set(NRF_TWIM_Type * p_reg, uint32_t pin)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SDA = pin;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_scl_pin_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->PSEL.SCL;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_sda_pin_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->PSEL.SDA;
 }
 
 NRF_STATIC_INLINE void nrf_twim_frequency_set(NRF_TWIM_Type * p_reg,
                                               nrf_twim_frequency_t frequency)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->FREQUENCY = frequency;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_errorsrc_get_and_clear(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
+
     uint32_t error_source = p_reg->ERRORSRC;
 
     // [error flags are cleared by writing '1' on their position]
@@ -963,11 +1001,13 @@ NRF_STATIC_INLINE uint32_t nrf_twim_errorsrc_get_and_clear(NRF_TWIM_Type * p_reg
 NRF_STATIC_INLINE void nrf_twim_address_set(NRF_TWIM_Type * p_reg,
                                             uint8_t address)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->ADDRESS = address;
 }
 
 NRF_STATIC_INLINE uint8_t nrf_twim_address_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return (uint8_t)(p_reg->ADDRESS & TWIM_ADDRESS_ADDRESS_Msk);
 }
 
@@ -975,6 +1015,8 @@ NRF_STATIC_INLINE void nrf_twim_tx_buffer_set(NRF_TWIM_Type * p_reg,
                                               uint8_t const * p_buffer,
                                               size_t          length)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.TX.PTR    = (uint32_t)p_buffer;
     p_reg->DMA.TX.MAXCNT = length;
@@ -988,6 +1030,8 @@ NRF_STATIC_INLINE void nrf_twim_rx_buffer_set(NRF_TWIM_Type * p_reg,
                                               uint8_t * p_buffer,
                                               size_t    length)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.RX.PTR    = (uint32_t)p_buffer;
     p_reg->DMA.RX.MAXCNT = length;
@@ -1000,16 +1044,19 @@ NRF_STATIC_INLINE void nrf_twim_rx_buffer_set(NRF_TWIM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_twim_shorts_set(NRF_TWIM_Type * p_reg,
                                            uint32_t mask)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->SHORTS = mask;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_twim_shorts_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->SHORTS;
 }
 
 NRF_STATIC_INLINE size_t nrf_twim_txd_amount_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     return p_reg->DMA.TX.AMOUNT;
 #else
@@ -1019,6 +1066,7 @@ NRF_STATIC_INLINE size_t nrf_twim_txd_amount_get(NRF_TWIM_Type const * p_reg)
 
 NRF_STATIC_INLINE size_t nrf_twim_rxd_amount_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     return p_reg->DMA.RX.AMOUNT;
 #else
@@ -1029,11 +1077,13 @@ NRF_STATIC_INLINE size_t nrf_twim_rxd_amount_get(NRF_TWIM_Type const * p_reg)
 #if NRF_TWIM_HAS_DMA_CURRENTAMOUNT_REG
 NRF_STATIC_INLINE size_t nrf_twim_txd_curr_amount_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->DMA.TX.CURRENTAMOUNT;
 }
 
 NRF_STATIC_INLINE size_t nrf_twim_rxd_curr_amount_get(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return p_reg->DMA.RX.CURRENTAMOUNT;
 }
 #endif
@@ -1041,6 +1091,7 @@ NRF_STATIC_INLINE size_t nrf_twim_rxd_curr_amount_get(NRF_TWIM_Type const * p_re
 #if NRF_TWIM_HAS_ARRAY_LIST
 NRF_STATIC_INLINE void nrf_twim_tx_list_enable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.TX.LIST = TWIM_DMA_TX_LIST_TYPE_ArrayList << TWIM_DMA_TX_LIST_TYPE_Pos;
 #else
@@ -1050,6 +1101,7 @@ NRF_STATIC_INLINE void nrf_twim_tx_list_enable(NRF_TWIM_Type * p_reg)
 
 NRF_STATIC_INLINE void nrf_twim_tx_list_disable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.TX.LIST = TWIM_DMA_TX_LIST_TYPE_Disabled << TWIM_DMA_TX_LIST_TYPE_Pos;
 #else
@@ -1059,6 +1111,7 @@ NRF_STATIC_INLINE void nrf_twim_tx_list_disable(NRF_TWIM_Type * p_reg)
 
 NRF_STATIC_INLINE void nrf_twim_rx_list_enable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.RX.LIST = TWIM_DMA_RX_LIST_TYPE_ArrayList << TWIM_DMA_RX_LIST_TYPE_Pos;
 #else
@@ -1068,6 +1121,7 @@ NRF_STATIC_INLINE void nrf_twim_rx_list_enable(NRF_TWIM_Type * p_reg)
 
 NRF_STATIC_INLINE void nrf_twim_rx_list_disable(NRF_TWIM_Type * p_reg)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
 #if NRF_TWIM_HAS_DMA_REG
     p_reg->DMA.RX.LIST = TWIM_DMA_RX_LIST_TYPE_Disabled << TWIM_DMA_RX_LIST_TYPE_Pos;
 #else
@@ -1081,6 +1135,9 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_enable_set(NRF_TWIM_Type * p_re
                                                             uint8_t         index,
                                                             bool            enable)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
+
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     switch (index)
     {
@@ -1125,6 +1182,8 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_enable_set(NRF_TWIM_Type * p_re
 NRF_STATIC_INLINE bool nrf_twim_rx_pattern_match_enable_check(NRF_TWIM_Type const * p_reg,
                                                               uint8_t               index)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     switch (index)
     {
@@ -1153,6 +1212,9 @@ NRF_STATIC_INLINE bool nrf_twim_rx_pattern_match_enable_check(NRF_TWIM_Type cons
 NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_one_shot_enable(NRF_TWIM_Type * p_reg,
                                                                  uint8_t         index)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
+
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     switch (index)
     {
@@ -1177,6 +1239,9 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_one_shot_enable(NRF_TWIM_Type *
 NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_one_shot_disable(NRF_TWIM_Type * p_reg,
                                                                   uint8_t         index)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+    NRF_TWIM_REG_WRITE_CAPTURE();
+
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     switch (index)
     {
@@ -1201,6 +1266,8 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_one_shot_disable(NRF_TWIM_Type 
 NRF_STATIC_INLINE bool nrf_twim_rx_pattern_match_one_shot_check(NRF_TWIM_Type const * p_reg,
                                                                 uint8_t               index)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
+
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     switch (index)
     {
@@ -1230,6 +1297,7 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_candidate_set(NRF_TWIM_Type * p
                                                                uint8_t         index,
                                                                uint32_t        pattern)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     p_reg->DMA.RX.MATCH.CANDIDATE[index] = pattern;
 }
@@ -1237,6 +1305,7 @@ NRF_STATIC_INLINE void nrf_twim_rx_pattern_match_candidate_set(NRF_TWIM_Type * p
 NRF_STATIC_INLINE uint32_t nrf_twim_rx_pattern_match_candidate_get(NRF_TWIM_Type const * p_reg,
                                                                    uint8_t               index)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     NRFX_ASSERT(index < NRF_TWIM_DMA_RX_PATTERN_MAX_COUNT);
     return p_reg->DMA.RX.MATCH.CANDIDATE[index];
 }
@@ -1246,6 +1315,7 @@ NRF_STATIC_INLINE uint32_t nrf_twim_rx_pattern_match_candidate_get(NRF_TWIM_Type
 NRF_STATIC_INLINE void nrf_twim_rx_terminate_on_bus_error_enable_set(NRF_TWIM_Type * p_reg,
                                                                      bool            enable)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->DMA.RX.TERMINATEONBUSERROR =  (enable ? TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Enabled :
                                                    TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Disabled)
                                          << TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Pos;
@@ -1253,6 +1323,7 @@ NRF_STATIC_INLINE void nrf_twim_rx_terminate_on_bus_error_enable_set(NRF_TWIM_Ty
 
 NRF_STATIC_INLINE bool nrf_twim_rx_terminate_on_bus_error_check(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return ((p_reg->DMA.RX.TERMINATEONBUSERROR & TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Msk)
             >> TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Pos) ==
            TWIM_DMA_RX_TERMINATEONBUSERROR_ENABLE_Enabled;
@@ -1261,6 +1332,7 @@ NRF_STATIC_INLINE bool nrf_twim_rx_terminate_on_bus_error_check(NRF_TWIM_Type co
 NRF_STATIC_INLINE void nrf_twim_tx_terminate_on_bus_error_enable_set(NRF_TWIM_Type * p_reg,
                                                                      bool            enable)
 {
+    NRF_TWIM_REG_WRITE_CAPTURE();
     p_reg->DMA.TX.TERMINATEONBUSERROR =  (enable ? TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Enabled :
                                                    TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Disabled)
                                          << TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Pos;
@@ -1268,6 +1340,7 @@ NRF_STATIC_INLINE void nrf_twim_tx_terminate_on_bus_error_enable_set(NRF_TWIM_Ty
 
 NRF_STATIC_INLINE bool nrf_twim_tx_terminate_on_bus_error_check(NRF_TWIM_Type const * p_reg)
 {
+    NRF_TWIM_REG_READ_CAPTURE();
     return ((p_reg->DMA.TX.TERMINATEONBUSERROR & TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Msk)
             >> TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Pos) ==
            TWIM_DMA_TX_TERMINATEONBUSERROR_ENABLE_Enabled;
