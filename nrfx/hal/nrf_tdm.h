@@ -50,6 +50,19 @@ extern "C" {
 #define NRF_TDM_CLOCKPIN_MCK_NEEDED 1
 #endif
 
+#define NRF_TDM_MEASURE_REG_ACCESS 1
+
+#if NRFX_CHECK(NRF_TDM_MEASURE_REG_ACCESS)
+extern volatile int g_reg_writes;
+extern volatile int g_reg_reads;
+
+#define NRF_TDM_REG_WRITE_CAPTURE() g_reg_writes++
+#define NRF_TDM_REG_READ_CAPTURE()  g_reg_reads++
+#else
+#define NRF_TDM_REG_WRITE_CAPTURE()
+#define NRF_TDM_REG_READ_CAPTURE()
+#endif
+
 /**
  * @defgroup nrf_tdm_hal TDM HAL
  * @{
@@ -63,7 +76,7 @@ extern "C" {
  *        function call to specify that the given TDM signal (SDOUT, SDIN, or MCK)
  *        shall not be connected to a physical pin.
  */
-#define NRF_TDM_PIN_NOT_CONNECTED UINT32_MAX 
+#define NRF_TDM_PIN_NOT_CONNECTED UINT32_MAX
 
 /** @brief TDM SCK pin selection mask. */
 #define NRF_TDM_PSEL_SCK_PIN_MASK  TDM_PSEL_SCK_PIN_Msk
@@ -673,6 +686,7 @@ NRF_STATIC_INLINE void nrf_tdm_sck_configure(NRF_TDM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_tdm_task_trigger(NRF_TDM_Type * p_reg,
                                             nrf_tdm_task_t task)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *)((uint8_t *)p_reg + (uint32_t)task)) = 0x1UL;
 }
 
@@ -683,8 +697,11 @@ NRF_STATIC_INLINE uint32_t nrf_tdm_task_address_get(NRF_TDM_Type const * p_reg,
 }
 
 NRF_STATIC_INLINE void nrf_tdm_event_clear(NRF_TDM_Type *  p_reg,
-                                           nrf_tdm_event_t event)
+                                              nrf_tdm_event_t event)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
+    NRF_TDM_REG_READ_CAPTURE();
+
     *((volatile uint32_t *)((uint8_t *)p_reg + (uint32_t)event)) = 0x0UL;
     nrf_event_readback((uint8_t *)p_reg + (uint32_t)event);
 }
@@ -692,6 +709,7 @@ NRF_STATIC_INLINE void nrf_tdm_event_clear(NRF_TDM_Type *  p_reg,
 NRF_STATIC_INLINE bool nrf_tdm_event_check(NRF_TDM_Type const * p_reg,
                                            nrf_tdm_event_t      event)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return nrf_event_check(p_reg, event);
 }
 
@@ -703,31 +721,37 @@ NRF_STATIC_INLINE uint32_t nrf_tdm_event_address_get(NRF_TDM_Type const * p_reg,
 
 NRF_STATIC_INLINE void nrf_tdm_int_enable(NRF_TDM_Type * p_reg, uint32_t mask)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->INTENSET = mask;
 }
 
 NRF_STATIC_INLINE void nrf_tdm_int_disable(NRF_TDM_Type * p_reg, uint32_t mask)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->INTENCLR = mask;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_int_enable_check(NRF_TDM_Type const * p_reg, uint32_t mask)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->INTENSET & mask;
 }
 
 NRF_STATIC_INLINE void nrf_tdm_enable(NRF_TDM_Type * p_reg)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->ENABLE = (TDM_ENABLE_ENABLE_Enabled << TDM_ENABLE_ENABLE_Pos);
 }
 
 NRF_STATIC_INLINE void nrf_tdm_disable(NRF_TDM_Type * p_reg)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->ENABLE = (TDM_ENABLE_ENABLE_Disabled << TDM_ENABLE_ENABLE_Pos);
 }
 
 NRF_STATIC_INLINE bool nrf_tdm_enable_check(NRF_TDM_Type * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->ENABLE == (TDM_ENABLE_ENABLE_Enabled << TDM_ENABLE_ENABLE_Pos);
 }
 
@@ -736,6 +760,7 @@ NRF_STATIC_INLINE void nrf_tdm_subscribe_set(NRF_TDM_Type * p_reg,
                                              nrf_tdm_task_t task,
                                              uint8_t        channel)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) task + 0x80uL)) =
             ((uint32_t)channel | NRF_SUBSCRIBE_PUBLISH_ENABLE);
 }
@@ -743,6 +768,7 @@ NRF_STATIC_INLINE void nrf_tdm_subscribe_set(NRF_TDM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_tdm_subscribe_clear(NRF_TDM_Type * p_reg,
                                                nrf_tdm_task_t task)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) task + 0x80uL)) = 0;
 }
 
@@ -750,6 +776,7 @@ NRF_STATIC_INLINE void nrf_tdm_subscribe_clear(NRF_TDM_Type * p_reg,
 NRF_STATIC_INLINE uint32_t nrf_tdm_subscribe_get(NRF_TDM_Type const * p_reg,
                                                  nrf_tdm_task_t       task)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return *((volatile uint32_t const *) ((uint8_t const *) p_reg + (uint32_t) task + 0x80uL));
 }
 
@@ -758,6 +785,7 @@ NRF_STATIC_INLINE void nrf_tdm_publish_set(NRF_TDM_Type *  p_reg,
                                            nrf_tdm_event_t event,
                                            uint8_t         channel)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) event + 0x80uL)) =
             ((uint32_t)channel | NRF_SUBSCRIBE_PUBLISH_ENABLE);
 }
@@ -765,64 +793,87 @@ NRF_STATIC_INLINE void nrf_tdm_publish_set(NRF_TDM_Type *  p_reg,
 NRF_STATIC_INLINE void nrf_tdm_publish_clear(NRF_TDM_Type *  p_reg,
                                              nrf_tdm_event_t event)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     *((volatile uint32_t *) ((uint8_t *) p_reg + (uint32_t) event + 0x80uL)) = 0;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_publish_get(NRF_TDM_Type const * p_reg,
                                                nrf_tdm_event_t      event)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return *((volatile uint32_t const *) ((uint8_t const *) p_reg + (uint32_t) event + 0x80uL));
 }
 #endif // defined(DPPI_PRESENT)
 
 NRF_STATIC_INLINE void nrf_tdm_pins_set(NRF_TDM_Type * p_reg, nrf_tdm_pins_t const * p_pins)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SCK   = p_pins->sck_pin;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->PSEL.FSYNC  = p_pins->fsync_pin;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->PSEL.MCK   = p_pins->mck_pin;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SDOUT = p_pins->sdout_pin;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->PSEL.SDIN  = p_pins->sdin_pin;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_sck_pin_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->PSEL.SCK;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_fsync_pin_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->PSEL.FSYNC;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_mck_pin_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->PSEL.MCK;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_sdout_pin_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->PSEL.SDOUT;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_sdin_pin_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->PSEL.SDIN;
 }
 
 NRF_STATIC_INLINE void nrf_tdm_configure(NRF_TDM_Type * p_reg, nrf_tdm_config_t const * p_config)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.MODE           = p_config->mode;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.ALIGN          = p_config->alignment;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.SWIDTH         = p_config->sample_width;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.CHANNEL.MASK   = p_config->channels;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.CHANNEL.NUM    = p_config->num_of_channels;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.CHANNEL.DELAY  = p_config->channel_delay;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.SCK.DIV        = p_config->sck_setup;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.FSYNC.DURATION = p_config->fsync_duration;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.MCK.DIV        = p_config->mck_setup;
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.SCK.POLARITY   = (p_config->sck_polarity == NRF_TDM_POLARITY_POSEDGE) ?
                                    (TDM_CONFIG_SCK_POLARITY_SCKPOLARITY_PosEdge) :
                                    (TDM_CONFIG_SCK_POLARITY_SCKPOLARITY_NegEdge);
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.FSYNC.POLARITY = (p_config->fsync_polarity == NRF_TDM_POLARITY_POSEDGE) ?
                                    (TDM_CONFIG_FSYNC_POLARITY_POLARITY_PosEdge) :
                                    (TDM_CONFIG_FSYNC_POLARITY_POLARITY_NegEdge);
@@ -830,6 +881,9 @@ NRF_STATIC_INLINE void nrf_tdm_configure(NRF_TDM_Type * p_reg, nrf_tdm_config_t 
 
 NRF_STATIC_INLINE void nrf_tdm_mck_set(NRF_TDM_Type * p_reg, bool enable)
 {
+    NRF_TDM_REG_READ_CAPTURE();
+    NRF_TDM_REG_WRITE_CAPTURE();
+
     p_reg->CONFIG.MCK.EN = ((p_reg->CONFIG.MCK.EN & ~TDM_CONFIG_MCK_EN_MCKEN_Msk) |
                             ((enable ? TDM_CONFIG_MCK_EN_MCKEN_Enabled :
                              TDM_CONFIG_MCK_EN_MCKEN_Disabled) << TDM_CONFIG_MCK_EN_MCKEN_Pos));
@@ -838,6 +892,8 @@ NRF_STATIC_INLINE void nrf_tdm_mck_set(NRF_TDM_Type * p_reg, bool enable)
 NRF_STATIC_INLINE void nrf_tdm_rx_count_set(NRF_TDM_Type * p_reg,
                                             uint16_t       size)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
+
 #if defined(DMA_BUFFER_UNIFIED_BYTE_ACCESS)
     p_reg->RXD.MAXCNT = size * sizeof(uint32_t);
 #else
@@ -848,6 +904,8 @@ NRF_STATIC_INLINE void nrf_tdm_rx_count_set(NRF_TDM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_tdm_tx_count_set(NRF_TDM_Type * p_reg,
                                             uint16_t       size)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
+
 #if defined(DMA_BUFFER_UNIFIED_BYTE_ACCESS)
     p_reg->TXD.MAXCNT = size * sizeof(uint32_t);
 #else
@@ -858,48 +916,57 @@ NRF_STATIC_INLINE void nrf_tdm_tx_count_set(NRF_TDM_Type * p_reg,
 NRF_STATIC_INLINE void nrf_tdm_transfer_direction_set(NRF_TDM_Type *   p_reg,
                                                       nrf_tdm_rxtxen_t dir)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.RXTXEN = (dir << TDM_CONFIG_RXTXEN_RXTXEN_Pos);
 }
 
 NRF_STATIC_INLINE void nrf_tdm_rx_buffer_set(NRF_TDM_Type * p_reg,
                                              uint32_t *     p_buffer)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->RXD.PTR = (uint32_t)p_buffer;
 }
 
 NRF_STATIC_INLINE uint32_t * nrf_tdm_rx_buffer_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return (uint32_t *)(p_reg->RXD.PTR);
 }
 
 NRF_STATIC_INLINE void nrf_tdm_tx_buffer_set(NRF_TDM_Type *   p_reg,
                                              uint32_t const * p_buffer)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->TXD.PTR = (uint32_t)p_buffer;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_current_tx_transfer_amount_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->TXD.CURRENTAMOUNT;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_last_tx_transfer_amount_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->TXD.AMOUNT;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_current_rx_transfer_amount_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->RXD.CURRENTAMOUNT;
 }
 
 NRF_STATIC_INLINE uint32_t nrf_tdm_last_rx_transfer_amount_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return p_reg->RXD.AMOUNT;
 }
 
 NRF_STATIC_INLINE uint32_t * nrf_tdm_tx_buffer_get(NRF_TDM_Type const * p_reg)
 {
+    NRF_TDM_REG_READ_CAPTURE();
     return (uint32_t *)(p_reg->TXD.PTR);
 }
 
@@ -907,6 +974,7 @@ NRF_STATIC_INLINE void nrf_tdm_mck_configure(NRF_TDM_Type * p_reg,
                                              nrf_tdm_src_t  clksrc,
                                              bool           enable_bypass)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.MCK.SRC = (((uint32_t) clksrc << TDM_CONFIG_MCK_SRC_CLKSRC_Pos) &
                              TDM_CONFIG_MCK_SRC_CLKSRC_Msk) |
                             (((uint32_t) enable_bypass << TDM_CONFIG_MCK_SRC_BYPASS_Pos) &
@@ -917,6 +985,7 @@ NRF_STATIC_INLINE void nrf_tdm_sck_configure(NRF_TDM_Type * p_reg,
                                              nrf_tdm_src_t  clksrc,
                                              bool           enable_bypass)
 {
+    NRF_TDM_REG_WRITE_CAPTURE();
     p_reg->CONFIG.SCK.SRC = ((uint32_t) clksrc << TDM_CONFIG_SCK_SRC_CLKSRC_Pos) |
                             ((uint32_t) enable_bypass << TDM_CONFIG_SCK_SRC_BYPASS_Pos);
 }
