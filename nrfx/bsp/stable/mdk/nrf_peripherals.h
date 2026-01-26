@@ -35,6 +35,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef NRF_PERIPHERALS_H__
 #define NRF_PERIPHERALS_H__
 
+#ifdef NRF_CONFIG_USE_MDK_CONFIG_FILE /* alternatively #ifdef __ZEPHYR__ */
+#include <mdk_config.h>
+#endif
+
 /*lint ++flb "Enter library region */
 
 #if defined(NRF51)

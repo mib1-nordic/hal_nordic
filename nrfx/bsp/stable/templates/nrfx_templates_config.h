@@ -34,6 +34,10 @@
 #ifndef NRFX_TEMPLATES_CONFIG_H__
 #define NRFX_TEMPLATES_CONFIG_H__
 
+#ifdef NRF_CONFIG_USE_MDK_CONFIG_FILE /* alternatively #ifdef __ZEPHYR__ */
+#include <mdk_config.h>
+#endif
+
 #if defined(NRF51)
     #include <nrfx_config_nrf51.h>
 #elif defined(NRF52805_XXAA)
